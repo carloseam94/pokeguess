@@ -1,4 +1,4 @@
-import { Pokemon, Move } from "pokenode-ts";
+import { Pokemon, Move, Type } from "pokenode-ts";
 
 export class TKExpression<T, K> {
   constructor(
@@ -9,10 +9,19 @@ export class TKExpression<T, K> {
     this.o1 = o1;
     this.predicate = predicate;
     this.o2 = o2;
+    this.result = false;
   }
 
+  private result: boolean;
+
   evaluate(): boolean {
-    return this.predicate.evaluate(this.o1, this.o2);
+    const result = this.predicate.evaluate(this.o1, this.o2);
+    this.result = result;
+    return result;
+  }
+
+  public getResult(): boolean {
+    return this.result;
   }
 
   print(): string {
@@ -20,6 +29,7 @@ export class TKExpression<T, K> {
       o1: this.o1.print(),
       predicate: this.predicate.print(),
       o2: this.o2.print(),
+      result: this.result,
     });
   }
 }
@@ -50,7 +60,7 @@ export class TObjectPokemon extends TObject<Pokemon> {
   }
 
   print(): string {
-    return `Object-Pokemon-${this.value.id}`;
+    return `Object-Pokemon-${this.value.name}`;
   }
 }
 
@@ -60,7 +70,17 @@ export class TObjectMove extends TObject<Move> {
   }
 
   print(): string {
-    return `Object-Move-${this.value.id}`;
+    return `Object-Move-${this.value.name}`;
+  }
+}
+
+export class TObjectTypes extends TObject<Type[]> {
+  constructor(types: Type[]) {
+    super(types);
+  }
+
+  print(): string {
+    return `Object-Types-${this.value[0].name}-${this.value[1]?.name}`;
   }
 }
 
@@ -102,6 +122,18 @@ export class TLearnMove extends TPredicate<Move, Pokemon> {
   }
   print(): string {
     return `Predicate-Learn-Move-Pokemon`;
+  }
+}
+
+export class TEqualTypes extends TPredicate<Type[], Pokemon> {
+  evaluate(o1: TObject<Type[]>, o2: TObject<Pokemon>): boolean {
+    const isEqualT1 = o1.value[0].name === o2.value.types[0].type.name;
+    return o1.value.length == 1
+      ? isEqualT1
+      : isEqualT1 && o1.value[1].name === o2.value.types[1].type.name;
+  }
+  print(): string {
+    return `Predicate-Equal-Types-Pokemon`;
   }
 }
 

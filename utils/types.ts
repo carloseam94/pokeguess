@@ -1,9 +1,4 @@
-export type PokemonPreview = {
-  name: string;
-  url: string;
-};
-
-export type MovePreview = {
+export type Preview = {
   name: string;
   url: string;
 };
