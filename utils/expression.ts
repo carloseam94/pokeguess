@@ -1,15 +1,17 @@
-import { Pokemon, Move, Type } from "pokenode-ts";
+import { Pokemon, Generation, Move, Type, PokemonSpecies } from "pokenode-ts";
 
 export class TKExpression<T, K> {
   constructor(
     private o1: TObject<T>,
     private predicate: TPredicate<T, K>,
-    private o2: TObject<K>
+    private o2: TObject<K>,
+    private isPokemonGuess: boolean = false
   ) {
     this.o1 = o1;
     this.predicate = predicate;
     this.o2 = o2;
     this.result = false;
+    this.isPokemonGuess = isPokemonGuess;
   }
 
   private result: boolean;
@@ -24,13 +26,14 @@ export class TKExpression<T, K> {
     return this.result;
   }
 
-  print(): string {
-    return JSON.stringify({
-      o1: this.o1.print(),
-      predicate: this.predicate.print(),
-      o2: this.o2.print(),
-      result: this.result,
-    });
+  public getIsPokemonGuess(): boolean {
+    return this.isPokemonGuess;
+  }
+
+  public toString(): string {
+    return `${this.predicate.toString()} ${this.o1.toString()}?  ${
+      this.result ? "Yes" : "No"
+    }`;
   }
 }
 
@@ -40,8 +43,6 @@ export abstract class TObject<T> {
   constructor(public value: T) {
     this.value = value;
   }
-
-  abstract print(): string;
 }
 
 export class TObjectDefault extends TObject<any> {
@@ -49,8 +50,8 @@ export class TObjectDefault extends TObject<any> {
     super(null);
   }
 
-  print(): string {
-    return `Object-Default-${this.value}`;
+  public toString(): string {
+    return "Default";
   }
 }
 
@@ -59,8 +60,28 @@ export class TObjectPokemon extends TObject<Pokemon> {
     super(pokemon);
   }
 
-  print(): string {
-    return `Object-Pokemon-${this.value.name}`;
+  public toString(): string {
+    return this.value.name;
+  }
+}
+
+export class TObjectGeneration extends TObject<Generation> {
+  constructor(generation: Generation) {
+    super(generation);
+  }
+
+  public toString(): string {
+    return this.value.name;
+  }
+}
+
+export class TObjectSpecies extends TObject<PokemonSpecies> {
+  constructor(species: PokemonSpecies) {
+    super(species);
+  }
+
+  public toString(): string {
+    return this.value.name;
   }
 }
 
@@ -69,8 +90,8 @@ export class TObjectMove extends TObject<Move> {
     super(move);
   }
 
-  print(): string {
-    return `Object-Move-${this.value.name}`;
+  public toString(): string {
+    return this.value.name;
   }
 }
 
@@ -79,8 +100,25 @@ export class TObjectTypes extends TObject<Type[]> {
     super(types);
   }
 
-  print(): string {
-    return `Object-Types-${this.value[0].name}-${this.value[1]?.name}`;
+  public toString(): string {
+    const nameType1 = this.value[0].name;
+    return this.value.length == 1
+      ? nameType1
+      : nameType1 + " " + this.value[1].name;
+  }
+}
+
+export class TObjectTypesAmounnt extends TObject<number> {
+  constructor(typesAmount: number) {
+    super(typesAmount);
+  }
+
+  public toString(): string {
+    if (this.value == 1) {
+      return "1 type";
+    } else {
+      return "2 types";
+    }
   }
 }
 
@@ -92,25 +130,32 @@ export abstract class TPredicate<T, K> {
   constructor() {}
 
   abstract evaluate(subject: TObject<T>, object: TObject<K>): boolean;
-
-  abstract print(): string;
 }
 
 export class TPredicateDefault extends TPredicate<any, any> {
   evaluate(o1: TObject<any>, o2: TObject<any>): boolean {
     return false;
   }
-  print(): string {
-    return `Predicate-Default`;
+  public toString(): string {
+    return "Default";
   }
 }
 
 export class TEqualPokemon extends TPredicate<Pokemon, Pokemon> {
   evaluate(o1: TObject<Pokemon>, o2: TObject<Pokemon>): boolean {
-    return o1.value.id === o2.value.id;
+    return o1.value.name === o2.value.name;
   }
-  print(): string {
-    return `Predicate-Equal-Pokemon-Pokemon`;
+  public toString(): string {
+    return "Is it";
+  }
+}
+
+export class TFromGeneration extends TPredicate<Generation, PokemonSpecies> {
+  evaluate(o1: TObject<Generation>, o2: TObject<PokemonSpecies>): boolean {
+    return o1.value.name === o2.value.generation.name;
+  }
+  public toString(): string {
+    return "It's from";
   }
 }
 
@@ -120,20 +165,32 @@ export class TLearnMove extends TPredicate<Move, Pokemon> {
       o2.value.moves.find((m) => m.move.name === o1.value.name) !== undefined
     );
   }
-  print(): string {
-    return `Predicate-Learn-Move-Pokemon`;
+  public toString(): string {
+    return "Does it learn";
   }
 }
 
 export class TEqualTypes extends TPredicate<Type[], Pokemon> {
   evaluate(o1: TObject<Type[]>, o2: TObject<Pokemon>): boolean {
+    if (o1.value.length != o2.value.types.length) {
+      return false;
+    }
     const isEqualT1 = o1.value[0].name === o2.value.types[0].type.name;
     return o1.value.length == 1
       ? isEqualT1
       : isEqualT1 && o1.value[1].name === o2.value.types[1].type.name;
   }
-  print(): string {
-    return `Predicate-Equal-Types-Pokemon`;
+  public toString(): string {
+    return "Is of type";
+  }
+}
+
+export class TEqualTypesAmount extends TPredicate<number, Pokemon> {
+  evaluate(o1: TObject<number>, o2: TObject<Pokemon>): boolean {
+    return o1.value == o2.value.types.length;
+  }
+  public toString(): string {
+    return "Does it have";
   }
 }
 
