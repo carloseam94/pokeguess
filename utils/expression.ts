@@ -1,5 +1,11 @@
 import { Pokemon, Generation, Move, Type, PokemonSpecies } from "pokenode-ts";
 
+export enum Signs {
+  Equal = 1,
+  Greater,
+  Lesser,
+}
+
 export class TKExpression<T, K> {
   constructor(
     private o1: TObject<T>,
@@ -28,6 +34,14 @@ export class TKExpression<T, K> {
 
   public getIsPokemonGuess(): boolean {
     return this.isPokemonGuess;
+  }
+
+  public getO1(): TObject<T> {
+    return this.o1;
+  }
+
+  public getO2(): TObject<K> {
+    return this.o2;
   }
 
   public toString(): string {
@@ -150,12 +164,30 @@ export class TEqualPokemon extends TPredicate<Pokemon, Pokemon> {
   }
 }
 
-export class TFromGeneration extends TPredicate<Generation, PokemonSpecies> {
-  evaluate(o1: TObject<Generation>, o2: TObject<PokemonSpecies>): boolean {
-    return o1.value.name === o2.value.generation.name;
+export class TFromGenerationE extends TPredicate<Generation, Generation> {
+  evaluate(o1: TObject<Generation>, o2: TObject<Generation>): boolean {
+    return o1.value.id === o2.value.id;
   }
   public toString(): string {
     return "It's from";
+  }
+}
+
+export class TFromGenerationGE extends TPredicate<Generation, Generation> {
+  evaluate(o1: TObject<Generation>, o2: TObject<Generation>): boolean {
+    return o1.value.id >= o2.value.id;
+  }
+  public toString(): string {
+    return "It's from or before";
+  }
+}
+
+export class TFromGenerationLE extends TPredicate<Generation, Generation> {
+  evaluate(o1: TObject<Generation>, o2: TObject<Generation>): boolean {
+    return o1.value.id <= o2.value.id;
+  }
+  public toString(): string {
+    return "It's from or after";
   }
 }
 
