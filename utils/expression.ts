@@ -202,13 +202,30 @@ export class TLearnMove extends TPredicate<Move, Pokemon> {
 
 export class TEqualTypes extends TPredicate<Type[], Pokemon> {
   evaluate(o1: TObject<Type[]>, o2: TObject<Pokemon>): boolean {
-    if (o1.value.length != o2.value.types.length) {
-      return false;
+    // less rigid
+    const o1Type1 = o1.value[0].name;
+    const o2Type1 = o2.value.types[0].type.name;
+    const o2Type2 = o2.value.types[1]?.type?.name;
+
+    if (o1.value.length == 1) {
+      return o1Type1 == o2Type1 || o1Type1 == o2Type2;
+    } else {
+      const o1Type2 = o1.value[1].name;
+      return (
+        (o1Type1 == o2Type1 && o1Type2 == o2Type2) ||
+        (o1Type1 == o2Type2 && o1Type2 == o2Type1)
+      );
     }
-    const isEqualT1 = o1.value[0].name === o2.value.types[0].type.name;
-    return o1.value.length == 1
-      ? isEqualT1
-      : isEqualT1 && o1.value[1].name === o2.value.types[1].type.name;
+
+    //#region more rigid
+    // if (o1.value.length != o2.value.types.length) {
+    //   return false;
+    // }
+    // const isEqualT1 = o1.value[0].name === o2.value.types[0].type.name;
+    // return o1.value.length == 1
+    //   ? isEqualT1
+    //   : isEqualT1 && o1.value[1].name === o2.value.types[1].type.name;
+    //#endregion
   }
   public toString(): string {
     return "Is it of type";
