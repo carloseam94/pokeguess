@@ -19,7 +19,7 @@
     </div>
     <div class="col-3 text-center">
       <img
-        :src="isSolved ? solutionPoke?.sprites.front_default?.toString() : pokeballUrl"
+        :src="isSolved ? solutionPoke?.sprites.front_default?.toString() : ballUrl"
         class="inline"
         alt="ball"
         width="150"
@@ -294,7 +294,10 @@ const api = new MainClient();
 const POKE_LIMIT = 1010;
 const MOVE_LIMIT = 918;
 
-const pokeballUrl = ref<string>();
+const ballNames: string[] = ["poke", "great", "ultra", "timer", "master"];
+const ballChangeStep: number = 5;
+
+const ballUrl = ref<string>();
 const solutionPoke = ref<Pokemon>();
 const isSolved = ref<boolean>(false);
 const guesses = reactive<Guess[]>([]);
@@ -341,13 +344,14 @@ const selectedOptions = ref<{
 });
 const currentExpression = ref<TKExpression<any, any> | null>();
 
-const ballNames = ["poke", "great", "ultra", "master"];
-watch(guesses, (new_value) => {
-  if (new_value.length >= 20) {
-    return "master";
-  } else {
-    return new_value[new_value.length % 5];
+watch(guesses, async (new_value) => {
+  if (new_value.length < ballChangeStep * ballNames.length) {
+    if (new_value.length % ballChangeStep == 0) {
+      const newBallName = ballNames[new_value.length / ballChangeStep];
+      ballUrl.value = await getBallUrl(newBallName);
+    }
   }
+  return ballUrl.value;
 });
 
 const getRandomPokemon = async (optionsPoke: Preview[]): Promise<Pokemon> => {
@@ -620,9 +624,9 @@ const typesNumberSelected = async (
 
 //#endregion
 
-const getPokeballUrl = async (name: string = "poke"): Promise<string> => {
+const getBallUrl = async (name: string = "poke"): Promise<string> => {
   const pokeball: Item = await api.item.getItemByName(`${name}-ball`);
-  pokeballUrl.value = pokeball.sprites.default;
+  ballUrl.value = pokeball.sprites.default;
   return pokeball.sprites.default;
 };
 
@@ -661,7 +665,7 @@ onMounted(async () => {
   await getGenOptions();
   await getMoveOptions();
   await getTypeOptions();
-  await getPokeballUrl();
+  await getBallUrl();
   await getEvolutionTriggers();
   await getRandomPokemon(options.value.pokemon);
   console.log(solutionPoke.value);
