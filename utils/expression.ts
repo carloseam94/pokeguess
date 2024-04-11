@@ -45,9 +45,7 @@ export class TKExpression<T, K> {
   }
 
   public toString(): string {
-    return `${this.predicate.toString()} ${this.o1.toString()}?  ${
-      this.result ? "Yes" : "No"
-    }`;
+    return `${this.predicate.toString()} ${this.o1.toString()}?`;
   }
 }
 
@@ -123,8 +121,8 @@ export class TObjectTypes extends TObject<Type[]> {
 }
 
 export class TObjectTypesAmounnt extends TObject<number> {
-  constructor(typesAmount: number) {
-    super(typesAmount);
+  constructor(typesNumber: number) {
+    super(typesNumber);
   }
 
   public toString(): string {
@@ -169,7 +167,7 @@ export class TFromGenerationE extends TPredicate<Generation, Generation> {
     return o1.value.id === o2.value.id;
   }
   public toString(): string {
-    return "It's from";
+    return "Is it from";
   }
 }
 
@@ -178,7 +176,7 @@ export class TFromGenerationGE extends TPredicate<Generation, Generation> {
     return o1.value.id >= o2.value.id;
   }
   public toString(): string {
-    return "It's from or before";
+    return "Is it from or before";
   }
 }
 
@@ -187,7 +185,7 @@ export class TFromGenerationLE extends TPredicate<Generation, Generation> {
     return o1.value.id <= o2.value.id;
   }
   public toString(): string {
-    return "It's from or after";
+    return "Is it from or after";
   }
 }
 
@@ -213,11 +211,11 @@ export class TEqualTypes extends TPredicate<Type[], Pokemon> {
       : isEqualT1 && o1.value[1].name === o2.value.types[1].type.name;
   }
   public toString(): string {
-    return "Is of type";
+    return "Is it of type";
   }
 }
 
-export class TEqualTypesAmount extends TPredicate<number, Pokemon> {
+export class TEqualTypesNumber extends TPredicate<number, Pokemon> {
   evaluate(o1: TObject<number>, o2: TObject<Pokemon>): boolean {
     return o1.value == o2.value.types.length;
   }
