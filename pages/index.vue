@@ -4,10 +4,12 @@
   </div>
   <div class="flex justify-center">
     <div class="col-3">
-      <span class="flex justify-center mb-2">Guesses: {{ guesses.length }}</span>
+      <span class="flex justify-center mb-2 font-semibold"
+        >Guesses: {{ guesses.length }}</span
+      >
       <div
         id="guesses"
-        class="h-[150px] overflow-auto p-4 rounded-lg border border-gray-200"
+        class="h-[150px] overflow-auto bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-lg"
       >
         <div v-for="g in guesses" class="text-sm px-3">
           {{ g.question }}
@@ -45,10 +47,10 @@
       Reset
     </button>
   </div>
-  <div class="py-3">
-    <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
+  <div class="py-3 border border-gray-200 bg-gray-50 rounded-lg shadow-lg">
+    <div class="mb-4 border-b">
       <ul
-        class="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500 dark:text-gray-400"
+        class="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500"
         id="tabOptions"
         role="tablist"
       >
@@ -128,7 +130,7 @@
     </div>
     <div id="tabContent">
       <div
-        class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+        class="hidden p-4"
         id="pokemon"
         role="tabpanel"
         aria-labelledby="gensgames-tab"
@@ -147,7 +149,7 @@
         </div>
       </div>
       <div
-        class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+        class="hidden p-4"
         id="gensgames"
         role="tabpanel"
         aria-labelledby="gensgames-tab"
@@ -176,7 +178,7 @@
         </div>
       </div>
       <div
-        class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+        class="hidden p-4"
         id="evolutions"
         role="tabpanel"
         aria-labelledby="evolutions-tab"
@@ -194,12 +196,7 @@
           />
         </div>
       </div>
-      <div
-        class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
-        id="types"
-        role="tabpanel"
-        aria-labelledby="types-tab"
-      >
+      <div class="hidden p-4" id="types" role="tabpanel" aria-labelledby="types-tab">
         <div class="flex py-3">
           <Multiselect
             v-model="selectedOptions.typesNumber"
@@ -227,12 +224,7 @@
           />
         </div>
       </div>
-      <div
-        class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
-        id="moves"
-        role="tabpanel"
-        aria-labelledby="moves-tab"
-      >
+      <div class="hidden p-4" id="moves" role="tabpanel" aria-labelledby="moves-tab">
         <div class="py-3">
           <Multiselect
             v-model="selectedOptions.move"
@@ -246,8 +238,9 @@
           />
         </div>
       </div>
+      <div class="hidden p-4" id="name" role="tabpanel" aria-labelledby="name-tab"></div>
       <div
-        class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+        class="hidden p-4"
         id="others"
         role="tabpanel"
         aria-labelledby="others-tab"
@@ -404,9 +397,6 @@ const initializeTabs = async (): Promise<void> => {
       "text-blue-600 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-400 border-blue-600 dark:border-blue-500",
     inactiveClasses:
       "text-gray-500 hover:text-gray-600 dark:text-gray-400 border-gray-100 hover:border-gray-300 dark:border-gray-700 dark:hover:text-gray-300",
-    onShow: () => {
-      // console.log("tab is shown");
-    },
   };
 
   const tabs: TabsInterface = new Tabs(tabElements, tabOptions);
@@ -659,6 +649,7 @@ const guess = (): Boolean => {
   currentExpression.value = null;
   return result;
 };
+
 onMounted(async () => {
   await initializeTabs();
   await getPokemonOptions();
