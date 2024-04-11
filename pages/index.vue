@@ -117,6 +117,18 @@
         <li role="presentation">
           <button
             class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
+            id="stats-tab"
+            type="button"
+            role="tab"
+            aria-controls="stats"
+            aria-selected="false"
+          >
+            Stats
+          </button>
+        </li>
+        <li role="presentation">
+          <button
+            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
             id="others-tab"
             type="button"
             role="tab"
@@ -238,7 +250,49 @@
           />
         </div>
       </div>
-      <div class="hidden p-4" id="name" role="tabpanel" aria-labelledby="name-tab"></div>
+      <div class="hidden p-4" id="stats" role="tabpanel" aria-labelledby="stats-tab">
+        <div class="py-3 flex">
+          <Multiselect
+            v-model="selectedOptions.stat.name"
+            :options="options.stats"
+            :searchable="true"
+            placeholder="Stats"
+            @change="statSelected"
+            valueProp="name"
+            trackBy="name"
+            label="name"
+          />
+          <Multiselect
+            v-model="selectedOptions.stat.pred"
+            :options="options.predicates"
+            placeholder="Predicates"
+            @change="statSelected"
+            valueProp="name"
+            trackBy="name"
+            label="name"
+          />
+          <div class="relative flex items-center w-[300px] mx-auto">
+            <input
+              type="number"
+              id="stat-input"
+              v-model="selectedOptions.stat.value"
+              min="1"
+              :max="maxStatValue"
+              @keyup="
+                () => {
+                  if (selectedOptions.stat.value < 1) {
+                    selectedOptions.stat.value = 1;
+                  } else if (selectedOptions.stat.value > maxStatValue) {
+                    selectedOptions.stat.value = maxStatValue;
+                  }
+                }
+              "
+              aria-describedby="helper-text-explanation"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+            />
+          </div>
+        </div>
+      </div>
       <div
         class="hidden p-4"
         id="others"
@@ -298,6 +352,7 @@ const guesses = reactive<Guess[]>([]);
 const options = ref<{
   pokemon: Preview[];
   moves: Preview[];
+  stats: Preview[];
   types: Preview[];
   typesNumber: number[];
   gens: Preview[];
@@ -308,6 +363,7 @@ const options = ref<{
 }>({
   pokemon: [],
   moves: [],
+  stats: [],
   types: [],
   typesNumber: [1, 2],
   gens: [],
@@ -319,6 +375,11 @@ const options = ref<{
 const selectedOptions = ref<{
   pokemon: string;
   move: string;
+  stat: {
+    name: string;
+    value: number;
+    pred: string;
+  };
   types: string[];
   typesNumber: number;
   gen: { value: string; pred: string };
@@ -328,6 +389,11 @@ const selectedOptions = ref<{
 }>({
   pokemon: "",
   move: "",
+  stat: {
+    name: "",
+    value: 0,
+    pred: "=",
+  },
   types: [],
   typesNumber: 0,
   gen: { value: "", pred: "=" },
@@ -335,6 +401,11 @@ const selectedOptions = ref<{
     triggers: "",
   },
 });
+
+const maxStatValue = computed(() => {
+  return selectedOptions.value.stat.name == "total" ? 1530 : 255;
+});
+
 const currentExpression = ref<TKExpression<any, any> | null>();
 
 watch(guesses, async (new_value) => {
@@ -385,6 +456,11 @@ const initializeTabs = async (): Promise<void> => {
       targetEl: document.querySelector("#moves")!,
     },
     {
+      id: "stats",
+      triggerEl: document.querySelector("#stats-tab")!,
+      targetEl: document.querySelector("#stats")!,
+    },
+    {
       id: "others",
       triggerEl: document.querySelector("#others-tab")!,
       targetEl: document.querySelector("#others")!,
@@ -428,11 +504,20 @@ const getGenOptions = async (): Promise<Preview[]> => {
   return genOptions.results;
 };
 
-const getEvolutionTriggers = async (): Promise<Preview[]> => {
+const getEvolutionTriggerOptions = async (): Promise<Preview[]> => {
   const evolutionsTriggerOptions = await api.evolution.listEvolutionTriggers(0);
   options.value.evolutions.triggers.splice(0) &&
     options.value.evolutions.triggers.push(...evolutionsTriggerOptions.results);
   return evolutionsTriggerOptions.results;
+};
+
+const getStatOptions = async (): Promise<Preview[]> => {
+  const statOptions = await api.pokemon.listStats(0, 6);
+  options.value.stats.splice(0) &&
+    options.value.stats.push({ name: "total", url: "" }) &&
+    options.value.stats.push(...statOptions.results);
+
+  return statOptions.results;
 };
 
 //#endregion
@@ -612,6 +697,28 @@ const typesNumberSelected = async (
   return exp;
 };
 
+const statSelected = async (moveName: string): Promise<TKExpression<Move, Pokemon>> => {
+  // if (!moveName || !moveName.length) {
+  //   const exp: TKExpression<Move, Pokemon> = getDefaultExpression();
+  //   currentExpression.value = exp;
+  //   return exp;
+  // }
+  // const selectedMove = await api.move.getMoveByName(moveName);
+  // if (!selectedMove || !solutionPoke.value) {
+  //   throw new Error("Selected Move Invalid");
+  // }
+  // const o1: TObjectMove = new TObjectMove(selectedMove);
+  // const o2: TObjectPokemon = new TObjectPokemon(solutionPoke.value);
+  // const predicate: TLearnMove = new TLearnMove();
+  // const exp: TKExpression<Move, Pokemon> = new TKExpression<Move, Pokemon>(
+  //   o1,
+  //   predicate,
+  //   o2
+  // );
+  // currentExpression.value = exp;
+  // return exp;
+};
+
 //#endregion
 
 const getBallUrl = async (name: string = "poke"): Promise<string> => {
@@ -656,8 +763,9 @@ onMounted(async () => {
   await getGenOptions();
   await getMoveOptions();
   await getTypeOptions();
+  await getEvolutionTriggerOptions();
+  await getStatOptions();
   await getBallUrl();
-  await getEvolutionTriggers();
   await getRandomPokemon(options.value.pokemon);
   console.log(solutionPoke.value);
 });
