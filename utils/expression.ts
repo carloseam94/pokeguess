@@ -1,10 +1,4 @@
-import { Pokemon, Generation, Move, Type, PokemonSpecies } from "pokenode-ts";
-
-export enum Signs {
-  Equal = 1,
-  Greater,
-  Lesser,
-}
+import { Pokemon, Generation, Move, Type, PokemonSpecies, Stat, PokemonStat } from "pokenode-ts";
 
 export class TKExpression<T, K> {
   constructor(
@@ -45,7 +39,7 @@ export class TKExpression<T, K> {
   }
 
   public toString(): string {
-    return `${this.predicate.toString()} ${this.o1.toString()}?`;
+    return this.predicate.toString(this.o1.value);
   }
 }
 
@@ -55,6 +49,8 @@ export abstract class TObject<T> {
   constructor(public value: T) {
     this.value = value;
   }
+
+  abstract toString(): string;
 }
 
 export class TObjectDefault extends TObject<any> {
@@ -134,22 +130,37 @@ export class TObjectTypesAmounnt extends TObject<number> {
   }
 }
 
+export class TObjectStat extends TObject<Stat | { name: string }> {
+  constructor(stat: Stat | { name: string }) {
+    super(stat);
+  }
+
+  public toString(): string {
+    return this.value.name;
+  }
+}
+
 //#endregion
 
 //#region PREDICATES
 
 export abstract class TPredicate<T, K> {
-  constructor() {}
+  constructor(protected args: any[] = []) {
+    this.args = args;
+  }
 
-  abstract evaluate(subject: TObject<T>, object: TObject<K>): boolean;
+  abstract evaluate(subject: TObject<T>, object: TObject<K>, ...args: any[]): boolean;
+
+  abstract toString(o1: T): string;
 }
 
 export class TPredicateDefault extends TPredicate<any, any> {
   evaluate(o1: TObject<any>, o2: TObject<any>): boolean {
     return false;
   }
+
   public toString(): string {
-    return "Default";
+    return `DEFAULT`;
   }
 }
 
@@ -157,35 +168,36 @@ export class TEqualPokemon extends TPredicate<Pokemon, Pokemon> {
   evaluate(o1: TObject<Pokemon>, o2: TObject<Pokemon>): boolean {
     return o1.value.name === o2.value.name;
   }
-  public toString(): string {
-    return "Is it";
+
+  public toString(pokemon: Pokemon): string {
+    return `Is it ${pokemon.name}?`;
   }
 }
 
-export class TFromGenerationE extends TPredicate<Generation, Generation> {
-  evaluate(o1: TObject<Generation>, o2: TObject<Generation>): boolean {
-    return o1.value.id === o2.value.id;
+export class TFromGeneration extends TPredicate<Generation, PokemonSpecies> {
+  evaluate(o1: TObject<Generation>, o2: TObject<PokemonSpecies>): boolean {
+    return o1.value.name === o2.value.generation.name;
   }
-  public toString(): string {
-    return "Is it from";
-  }
-}
-
-export class TFromGenerationGE extends TPredicate<Generation, Generation> {
-  evaluate(o1: TObject<Generation>, o2: TObject<Generation>): boolean {
-    return o1.value.id >= o2.value.id;
-  }
-  public toString(): string {
-    return "Is it from or before";
+  public toString(gen: Generation): string {
+    return `Is it from ${gen.name}?`;
   }
 }
 
-export class TFromGenerationLE extends TPredicate<Generation, Generation> {
-  evaluate(o1: TObject<Generation>, o2: TObject<Generation>): boolean {
-    return o1.value.id <= o2.value.id;
+export class TFromOrBeforeGeneration extends TPredicate<Generation, PokemonSpecies> {
+  evaluate(o1: TObject<Generation>, o2: TObject<PokemonSpecies>): boolean {
+    return o2.value.generation.name <= o1.value.name;
   }
-  public toString(): string {
-    return "Is it from or after";
+  public toString(gen: Generation): string {
+    return `Is it from ${gen.name} or before?`;
+  }
+}
+
+export class TFromOrAfterGeneration extends TPredicate<Generation, PokemonSpecies> {
+  evaluate(o1: TObject<Generation>, o2: TObject<PokemonSpecies>): boolean {
+    return o2.value.generation.name >= o1.value.name;
+  }
+  public toString(gen: Generation): string {
+    return `Is it from ${gen.name} or after?`;
   }
 }
 
@@ -195,8 +207,8 @@ export class TLearnMove extends TPredicate<Move, Pokemon> {
       o2.value.moves.find((m) => m.move.name === o1.value.name) !== undefined
     );
   }
-  public toString(): string {
-    return "Does it learn";
+  public toString(move: Move): string {
+    return `Does it learn ${move.name}?`;
   }
 }
 
@@ -227,8 +239,8 @@ export class TEqualTypes extends TPredicate<Type[], Pokemon> {
     //   : isEqualT1 && o1.value[1].name === o2.value.types[1].type.name;
     //#endregion
   }
-  public toString(): string {
-    return "Is it of type";
+  public toString(types: Type[]): string {
+    return `Is it a ${types.map((type: Type) => type.name).join('-')} type?`;
   }
 }
 
@@ -236,8 +248,86 @@ export class TEqualTypesNumber extends TPredicate<number, Pokemon> {
   evaluate(o1: TObject<number>, o2: TObject<Pokemon>): boolean {
     return o1.value == o2.value.types.length;
   }
-  public toString(): string {
-    return "Does it have";
+
+  public toString(numberOfTypes: number): string {
+    if(numberOfTypes > 1) {
+      return `Does it have ${numberOfTypes} types?`;
+    } else {
+      return `Does it have only 1 type?`;
+    }
+  }
+}
+
+
+function getBaseStat(o1: TObject<Stat | {name: string}>, o2: TObject<Pokemon>) {
+  let base_stat = 0;
+    if (o1.value.name == "total") {
+      base_stat = o2.value.stats.reduce((partialSum: number, stat: PokemonStat) => partialSum + stat.base_stat, 0);
+    } else {
+      base_stat = o2.value.stats.find(stat => stat.stat.name == o1.value.name)?.base_stat!;
+    }
+    return base_stat;
+}
+export class TStatE extends TPredicate<Stat | {name: string}, Pokemon> {
+
+  constructor(...args: number[]) {
+    super(args);
+  }
+
+  evaluate(o1: TObject<Stat | {name: string}>, o2: TObject<Pokemon>): boolean {
+    const baseStat = getBaseStat(o1, o2);
+    const value = parseInt(this.args[0]);
+    return value == baseStat;
+  }
+
+  public toString(stat: Stat | {name: string}): string {
+    if(stat.name == 'total') {
+      return `Are its total base stats ${this.args[0]}?`;
+    } else {
+      return `Is its base ${stat.name} ${this.args[0]}?`;
+    }
+  }
+}
+
+export class TStatLE extends TPredicate<Stat | {name: string}, Pokemon> {
+
+  constructor(...args: number[]) {
+    super(args);
+  }
+
+  evaluate(o1: TObject<Stat | {name: string}>, o2: TObject<Pokemon>): boolean { 
+    const baseStat = getBaseStat(o1, o2);
+    const value = parseInt(this.args[0]);
+    return baseStat <= value;
+  }
+
+  public toString(stat: Stat | {name: string}): string {
+    if(stat.name == 'total') {
+      return `Are its total base stats lesser than or equal to ${this.args[0]}?`;
+    } else {
+      return `Is its base ${stat.name} lesser than or equal to ${this.args[0]}?`;
+    }
+  }
+}
+
+export class TStatGE extends TPredicate<Stat | {name: string}, Pokemon> {
+
+  constructor(...args: number[]) {
+    super(args);
+  }
+
+  evaluate(o1: TObject<Stat | {name: string}>, o2: TObject<Pokemon>): boolean {
+    const baseStat = getBaseStat(o1, o2);
+    const value = parseInt(this.args[0]);
+    return baseStat >= value;
+  }
+
+  public toString(stat: Stat | {name: string}): string {
+    if(stat.name == 'total') {
+      return `Are its total base stats greater than or equal to ${this.args[0]}?`;
+    } else {
+      return `Is its base ${stat.name} greater than or equal to ${this.args[0]}?`;
+    }
   }
 }
 

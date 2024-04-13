@@ -7,17 +7,17 @@
       <span class="flex justify-center mb-2 font-semibold"
         >Guesses: {{ guesses.length }}</span
       >
-      <div
+      <ul
         id="guesses"
-        class="h-[150px] overflow-auto bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-lg"
+        class="list-disc h-[150px] overflow-auto bg-gray-50 py-3 px-5 rounded-lg border border-gray-200 shadow-lg"
       >
-        <div v-for="g in guesses" class="text-sm px-3">
+        <li v-for="g in guesses" class="text-sm mb-1">
           {{ g.question }}
           <b :class="g.answer ? 'text-green-500' : 'text-red-500'">{{
             g.answer ? "Yes" : "No"
           }}</b>
-        </div>
-      </div>
+        </li>
+      </ul>
     </div>
     <div class="col-3 text-center">
       <img
@@ -169,10 +169,10 @@
         <div class="flex py-3">
           <Multiselect
             v-model="selectedOptions.gen.pred"
-            :options="options.predicates"
+            :options="options.predicates.time"
             :searchable="true"
             placeholder="Predicates"
-            @change="genPredSelected"
+            @change="genSelected({ genName: selectedOptions.gen.value, pred: $event as any as TimeRelated })"
             valueProp="name"
             trackBy="name"
             label="name"
@@ -182,7 +182,7 @@
             :options="options.gens"
             :searchable="true"
             placeholder="Generations"
-            @change="genSelected"
+            @change="genSelected({ genName: $event as any as string, pred: selectedOptions.gen.pred })"
             valueProp="name"
             trackBy="name"
             label="name"
@@ -201,7 +201,11 @@
             :options="options.evolutions.triggers"
             :searchable="true"
             placeholder="Triggers"
-            @change="evolutionTriggerSelected"
+            @change="
+              () => {
+                console.log('changed');
+              }
+            "
             valueProp="name"
             trackBy="name"
             label="name"
@@ -257,16 +261,16 @@
             :options="options.stats"
             :searchable="true"
             placeholder="Stats"
-            @change="statSelected"
+            @change="statSelected({ statName: $event as any as string, pred: selectedOptions.stat.pred, value: selectedOptions.stat.value})"
             valueProp="name"
             trackBy="name"
             label="name"
           />
           <Multiselect
             v-model="selectedOptions.stat.pred"
-            :options="options.predicates"
+            :options="options.predicates.math"
             placeholder="Predicates"
-            @change="statSelected"
+            @change="statSelected({ statName: selectedOptions.stat.name, pred: $event as any as MathSymbols, value: selectedOptions.stat.value})"
             valueProp="name"
             trackBy="name"
             label="name"
@@ -276,16 +280,23 @@
               type="number"
               id="stat-input"
               v-model="selectedOptions.stat.value"
-              min="1"
+              min="0"
               :max="maxStatValue"
               @keyup="
                 () => {
-                  if (selectedOptions.stat.value < 1) {
-                    selectedOptions.stat.value = 1;
+                  if (selectedOptions.stat.value < 0) {
+                    selectedOptions.stat.value = 0;
                   } else if (selectedOptions.stat.value > maxStatValue) {
                     selectedOptions.stat.value = maxStatValue;
                   }
                 }
+              "
+              @change="
+                statSelected({
+                  statName: selectedOptions.stat.name,
+                  pred: selectedOptions.stat.pred,
+                  value: selectedOptions.stat.value,
+                })
               "
               aria-describedby="helper-text-explanation"
               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -312,6 +323,7 @@ import {
   Move,
   Type,
   Item,
+  Stat,
 } from "pokenode-ts";
 import { getRandomInt } from "../utils/helpers";
 import { Preview, Guess } from "../utils/types";
@@ -320,9 +332,9 @@ import {
   TObjectPokemon,
   TEqualPokemon,
   TObjectGeneration,
-  TFromGenerationE,
-  TFromGenerationLE,
-  TFromGenerationGE,
+  TFromGeneration,
+  TFromOrBeforeGeneration,
+  TFromOrAfterGeneration,
   TObjectSpecies,
   TObjectMove,
   TLearnMove,
@@ -330,6 +342,10 @@ import {
   TEqualTypes,
   TObjectTypesAmounnt,
   TEqualTypesNumber,
+  TObjectStat,
+  TStatE,
+  TStatGE,
+  TStatLE,
   getDefaultExpression,
 } from "../utils/expression";
 
@@ -349,6 +365,18 @@ const solutionPoke = ref<Pokemon>();
 const isSolved = ref<boolean>(false);
 const guesses = reactive<Guess[]>([]);
 
+enum MathSymbols {
+  Equal = "=",
+  Greater = ">=",
+  Lesser = "<=",
+}
+
+enum TimeRelated {
+  Is = "Is from",
+  Before = "Is from or before",
+  After = "Is from or after",
+}
+
 const options = ref<{
   pokemon: Preview[];
   moves: Preview[];
@@ -359,7 +387,10 @@ const options = ref<{
   evolutions: {
     triggers: Preview[];
   };
-  predicates: string[];
+  predicates: {
+    time: TimeRelated[];
+    math: MathSymbols[];
+  };
 }>({
   pokemon: [],
   moves: [],
@@ -370,7 +401,10 @@ const options = ref<{
   evolutions: {
     triggers: [],
   },
-  predicates: ["=", "<=", ">="],
+  predicates: {
+    time: [TimeRelated.Is, TimeRelated.Before, TimeRelated.After],
+    math: [MathSymbols.Equal, MathSymbols.Lesser, MathSymbols.Greater],
+  },
 });
 const selectedOptions = ref<{
   pokemon: string;
@@ -378,11 +412,11 @@ const selectedOptions = ref<{
   stat: {
     name: string;
     value: number;
-    pred: string;
+    pred: MathSymbols;
   };
   types: string[];
   typesNumber: number;
-  gen: { value: string; pred: string };
+  gen: { value: string; pred: TimeRelated };
   evolutions: {
     triggers: string;
   };
@@ -392,11 +426,11 @@ const selectedOptions = ref<{
   stat: {
     name: "",
     value: 0,
-    pred: "=",
+    pred: MathSymbols.Equal,
   },
   types: [],
   typesNumber: 0,
-  gen: { value: "", pred: "=" },
+  gen: { value: "", pred: TimeRelated.Is },
   evolutions: {
     triggers: "",
   },
@@ -549,79 +583,44 @@ const pokemonSelected = async (
   return exp;
 };
 
-const genSelected = async (
-  genName: string
-): Promise<TKExpression<Generation, Generation>> => {
-  if (!genName || !genName.length) {
-    const exp: TKExpression<Generation, Generation> = getDefaultExpression();
+const genSelected = async (params: {
+  genName: string;
+  pred: TimeRelated;
+}): Promise<TKExpression<Generation, PokemonSpecies>> => {
+  if (!params.genName?.length || !params.pred?.length) {
+    const exp: TKExpression<Generation, PokemonSpecies> = getDefaultExpression();
     currentExpression.value = exp;
     return exp;
   }
-  const selectedGen = await api.game.getGenerationByName(genName);
+  const selectedGen = await api.game.getGenerationByName(params.genName);
   if (!selectedGen || !solutionPoke.value) {
     throw new Error("Selected Generation is Invalid");
   }
   const solSpecies: PokemonSpecies = await api.pokemon.getPokemonSpeciesByName(
     solutionPoke.value.name
   );
-  const solGeneration: Generation = await api.game.getGenerationByName(
-    solSpecies.generation.name
-  );
+
   const o1: TObjectGeneration = new TObjectGeneration(selectedGen);
-  const o2: TObjectGeneration = new TObjectGeneration(solGeneration);
+  const o2: TObjectSpecies = new TObjectSpecies(solSpecies);
   let predicate = null;
-  switch (selectedOptions.value.gen.pred) {
-    case "<=":
-      predicate = new TFromGenerationGE();
+  switch (params.pred) {
+    case TimeRelated.After:
+      predicate = new TFromOrAfterGeneration();
       break;
-    case ">=":
-      predicate = new TFromGenerationLE();
+    case TimeRelated.Before:
+      predicate = new TFromOrBeforeGeneration();
       break;
     default:
-      predicate = new TFromGenerationE();
+      predicate = new TFromGeneration();
       break;
   }
-  const exp: TKExpression<Generation, Generation> = new TKExpression<
+  const exp: TKExpression<Generation, PokemonSpecies> = new TKExpression<
     Generation,
-    Generation
+    PokemonSpecies
   >(o1, predicate, o2);
-  console.log(exp);
   currentExpression.value = exp;
   return exp;
 };
-
-const genPredSelected = async (
-  pred: string
-): Promise<TKExpression<Generation, Generation>> => {
-  if (!pred || !pred.length) {
-    const exp: TKExpression<Generation, Generation> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
-  }
-
-  let predicate = null;
-  switch (pred) {
-    case "<=":
-      predicate = new TFromGenerationGE();
-      break;
-    case ">=":
-      predicate = new TFromGenerationLE();
-      break;
-    default:
-      predicate = new TFromGenerationE();
-      break;
-  }
-  console.log(predicate);
-  const exp = new TKExpression<Generation, Generation>(
-    currentExpression.value?.getO1() as TObjectGeneration,
-    predicate,
-    currentExpression.value?.getO2() as TObjectGeneration
-  );
-  currentExpression.value = exp;
-  return exp;
-};
-
-// evolutionTriggerSelected
 
 const moveSelected = async (moveName: string): Promise<TKExpression<Move, Pokemon>> => {
   if (!moveName || !moveName.length) {
@@ -697,26 +696,52 @@ const typesNumberSelected = async (
   return exp;
 };
 
-const statSelected = async (moveName: string): Promise<TKExpression<Move, Pokemon>> => {
-  // if (!moveName || !moveName.length) {
-  //   const exp: TKExpression<Move, Pokemon> = getDefaultExpression();
-  //   currentExpression.value = exp;
-  //   return exp;
-  // }
-  // const selectedMove = await api.move.getMoveByName(moveName);
-  // if (!selectedMove || !solutionPoke.value) {
-  //   throw new Error("Selected Move Invalid");
-  // }
-  // const o1: TObjectMove = new TObjectMove(selectedMove);
-  // const o2: TObjectPokemon = new TObjectPokemon(solutionPoke.value);
-  // const predicate: TLearnMove = new TLearnMove();
-  // const exp: TKExpression<Move, Pokemon> = new TKExpression<Move, Pokemon>(
-  //   o1,
-  //   predicate,
-  //   o2
-  // );
-  // currentExpression.value = exp;
-  // return exp;
+const statSelected = async (params: {
+  statName: string;
+  pred: MathSymbols;
+  value: number;
+}): Promise<TKExpression<Stat | { name: string }, Pokemon>> => {
+  if (!params.statName?.length || !params.pred?.length || params.value < 0) {
+    const exp: TKExpression<Stat, Pokemon> = getDefaultExpression();
+    currentExpression.value = exp;
+    return exp;
+  }
+
+  if (!solutionPoke.value) {
+    throw new Error("Solution poke does not exist");
+  }
+
+  let o1 = null;
+  if (params.statName == "total") {
+    o1 = new TObjectStat({ name: "total" });
+  } else {
+    const selectedStat = await api.pokemon.getStatByName(params.statName);
+    if (!selectedStat) {
+      throw new Error("Selected Stat is Invalid");
+    }
+    o1 = new TObjectStat(selectedStat);
+  }
+
+  const o2: TObjectPokemon = new TObjectPokemon(solutionPoke.value);
+
+  let predicate = null;
+  switch (params.pred) {
+    case MathSymbols.Lesser:
+      predicate = new TStatLE(params.value);
+      break;
+    case MathSymbols.Greater:
+      predicate = new TStatGE(params.value);
+      break;
+    default:
+      predicate = new TStatE(params.value);
+      break;
+  }
+  const exp: TKExpression<Stat | { name: string }, Pokemon> = new TKExpression<
+    Stat | { name: string },
+    Pokemon
+  >(o1, predicate, o2);
+  currentExpression.value = exp;
+  return exp;
 };
 
 //#endregion
