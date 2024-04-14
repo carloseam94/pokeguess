@@ -197,6 +197,18 @@
       >
         <div class="flex py-3">
           <Multiselect
+            v-model="selectedOptions.evolutions.stage"
+            :options="options.evolutions.stages"
+            :searchable="true"
+            placeholder="Stage"
+            @change="evolutionStageSelected($event as any as number)"
+            valueProp="value"
+            trackBy="name"
+            label="name"
+          />
+        </div>
+        <div class="flex py-3">
+          <Multiselect
             v-model="selectedOptions.evolutions.trigger"
             :options="options.evolutions.triggers"
             :searchable="true"
@@ -315,6 +327,7 @@ import {
   MainClient,
   Pokemon,
   PokemonSpecies,
+  EvolutionChain,
   EvolutionTrigger,
   Generation,
   Move,
@@ -329,6 +342,8 @@ import {
   TObjectPokemon,
   TEqualPokemon,
   TObjectGeneration,
+  TObjectEvolutionChain,
+  TIsEvolutionStage,
   TObjectEvolutionTrigger,
   TIsEvolutionTrigger,
   TFromGeneration,
@@ -339,7 +354,7 @@ import {
   TLearnMove,
   TObjectTypes,
   TEqualTypes,
-  TObjectTypesAmounnt,
+  TObjectTypesNumber,
   TEqualTypesNumber,
   TObjectStat,
   TStatE,
@@ -376,6 +391,12 @@ enum TimeRelated {
   After = "Is from or after",
 }
 
+enum EvoStage {
+  Unevolved = "Unevolved",
+  First = "First evolution",
+  Second = "Second evolution",
+}
+
 const options = ref<{
   pokemon: Preview[];
   moves: Preview[];
@@ -384,6 +405,8 @@ const options = ref<{
   typesNumber: number[];
   gens: Preview[];
   evolutions: {
+    stages: { name: EvoStage; value: number }[];
+    chainNumber: number[];
     triggers: Preview[];
   };
   predicates: {
@@ -398,6 +421,12 @@ const options = ref<{
   typesNumber: [1, 2],
   gens: [],
   evolutions: {
+    stages: [
+      { name: EvoStage.Unevolved, value: 0 },
+      { name: EvoStage.First, value: 1 },
+      { name: EvoStage.Second, value: 2 },
+    ],
+    chainNumber: [1, 2, 3, 4, 9],
     triggers: [],
   },
   predicates: {
@@ -417,7 +446,9 @@ const selectedOptions = ref<{
   typesNumber: number;
   gen: { value: string; pred: TimeRelated };
   evolutions: {
+    stage: number;
     trigger: string;
+    chainNumber: number;
   };
 }>({
   pokemon: "",
@@ -431,7 +462,9 @@ const selectedOptions = ref<{
   typesNumber: 0,
   gen: { value: "", pred: TimeRelated.Is },
   evolutions: {
+    stage: -1,
     trigger: "",
+    chainNumber: 1,
   },
 });
 
@@ -621,6 +654,43 @@ const genSelected = async (params: {
   return exp;
 };
 
+//#region EVOLUTION
+const evolutionStageSelected = async (
+  stage: number
+): Promise<TKExpression<EvolutionChain, Pokemon>> => {
+  console.log(stage);
+
+  if (stage == undefined || stage < 0) {
+    const exp: TKExpression<EvolutionChain, Pokemon> = getDefaultExpression();
+    currentExpression.value = exp;
+    return exp;
+  }
+
+  if (!solutionPoke.value) {
+    throw new Error("Solution Poke Invalid");
+  }
+
+  const species = await api.pokemon.getPokemonSpeciesByName(solutionPoke.value?.name);
+  const splitUrl = species.evolution_chain.url.split("/");
+  const evoChain = await api.evolution.getEvolutionChainById(
+    parseInt(splitUrl[splitUrl.length - 2])
+  );
+
+  if (!evoChain) {
+    throw new Error("Cant get evo chain from poke");
+  }
+
+  const o1: TObjectEvolutionChain = new TObjectEvolutionChain(evoChain);
+  const o2: TObjectPokemon = new TObjectPokemon(solutionPoke.value);
+  const predicate: TIsEvolutionStage = new TIsEvolutionStage(stage);
+  const exp: TKExpression<EvolutionChain, Pokemon> = new TKExpression<
+    EvolutionChain,
+    Pokemon
+  >(o1, predicate, o2);
+  currentExpression.value = exp;
+  return exp;
+};
+
 const evolutionTriggerSelected = async (
   trigger: string
 ): Promise<TKExpression<EvolutionTrigger, Pokemon>> => {
@@ -633,6 +703,7 @@ const evolutionTriggerSelected = async (
   if (!selectedTrigger || !solutionPoke.value) {
     throw new Error("Selected Evolution Trigger Invalid");
   }
+
   const o1: TObjectEvolutionTrigger = new TObjectEvolutionTrigger(selectedTrigger);
   const o2: TObjectPokemon = new TObjectPokemon(solutionPoke.value);
   const predicate: TIsEvolutionTrigger = new TIsEvolutionTrigger();
@@ -643,6 +714,7 @@ const evolutionTriggerSelected = async (
   currentExpression.value = exp;
   return exp;
 };
+//#endregion
 
 const moveSelected = async (moveName: string): Promise<TKExpression<Move, Pokemon>> => {
   if (!moveName || !moveName.length) {
@@ -706,7 +778,7 @@ const typesNumberSelected = async (
   if (!solutionPoke.value) {
     throw new Error("Selected Type Invalid");
   }
-  const o1: TObjectTypesAmounnt = new TObjectTypesAmounnt(typesNumber);
+  const o1: TObjectTypesNumber = new TObjectTypesNumber(typesNumber);
   const o2: TObjectPokemon = new TObjectPokemon(solutionPoke.value);
   const predicate: TEqualTypesNumber = new TEqualTypesNumber();
   const exp: TKExpression<number, Pokemon> = new TKExpression<number, Pokemon>(

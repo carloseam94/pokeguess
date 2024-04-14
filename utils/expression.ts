@@ -1,4 +1,4 @@
-import { Pokemon, Generation, Move, Type, PokemonSpecies, Stat, PokemonStat, EvolutionTrigger, NamedAPIResource } from "pokenode-ts";
+import { Pokemon, Generation, Move, Type, PokemonSpecies, Stat, PokemonStat, EvolutionTrigger, NamedAPIResource, EvolutionChain, ChainLink } from "pokenode-ts";
 
 export class TKExpression<T, K> {
   constructor(
@@ -73,6 +73,34 @@ export class TObjectPokemon extends TObject<Pokemon> {
   }
 }
 
+export class TObjectEvolutionChain extends TObject<EvolutionChain> {
+  constructor(chain: EvolutionChain) {
+    super(chain);
+  }
+
+  public toString(): string {
+    return this.value.id.toString();
+  }
+};
+
+export class TObjectEvolutionStage extends TObject<number> {
+  constructor(stage: number) {
+    super(stage);
+  }
+
+  public toString(): string {
+    if (this.value == 0) {
+      return "Unevolved";
+    } else if (this.value == 1){
+      return "First evolution";
+    } else if (this.value == 2){
+      return "Second evolution";
+    } else {
+      return "Other"
+    }
+  }
+}
+
 export class TObjectEvolutionTrigger extends TObject<EvolutionTrigger> {
   constructor(trigger: EvolutionTrigger) {
     super(trigger);
@@ -126,7 +154,7 @@ export class TObjectTypes extends TObject<Type[]> {
   }
 }
 
-export class TObjectTypesAmounnt extends TObject<number> {
+export class TObjectTypesNumber extends TObject<number> {
   constructor(typesNumber: number) {
     super(typesNumber);
   }
@@ -211,13 +239,50 @@ export class TFromOrAfterGeneration extends TPredicate<Generation, PokemonSpecie
   }
 }
 
+function getStage(chain: ChainLink, pokemon: Pokemon): number {
+  let stage = -1;
+  if(chain.species.name == pokemon.name) {
+    return 0;
+  } 
+
+  chain.evolves_to.forEach((child: ChainLink) => {
+    stage = 1 + Math.max(getStage(child, pokemon)); 
+  }) 
+
+  return stage;
+}
+export class TIsEvolutionStage extends TPredicate<EvolutionChain, Pokemon> {
+  constructor(...args: number[]) {
+    super(args);
+  }
+
+  evaluate(o1: TObject<EvolutionChain>, o2: TObject<Pokemon>): boolean {
+    const stage = getStage(o1.value.chain, o2.value);
+    const param_stage = parseInt(this.args[0]);
+    return stage == param_stage;
+  }
+
+  public toString(chain: EvolutionChain): string {
+    const stage = parseInt(this.args[0]);
+    if(stage == 0) {
+      return `Is it unevolved?`
+    } else if (stage == 1) {
+      return `Is it a first evolution?`
+    } else if (stage == 2 ) {
+      return `Is it a second evolution?`
+    } else {
+      return `Is it a third evolution or greater?`
+    }
+  }
+}
+
 export class TIsEvolutionTrigger extends TPredicate<EvolutionTrigger, Pokemon> {
   evaluate(o1: TObject<EvolutionTrigger>, o2: TObject<Pokemon>): boolean {
     return o1.value.pokemon_species.some((poke: NamedAPIResource) => poke.name == o2.value.name);
   }
 
   public toString(trigger: EvolutionTrigger): string {
-    return `Does it evolve by ${trigger.name}`;
+    return `Did it evolve by ${trigger.name}`;
   }
 }
 
