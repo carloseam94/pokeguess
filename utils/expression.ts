@@ -1,4 +1,4 @@
-import { Pokemon, Generation, Move, Type, PokemonSpecies, Stat, PokemonStat } from "pokenode-ts";
+import { Pokemon, Generation, Move, Type, PokemonSpecies, Stat, PokemonStat, EvolutionTrigger, NamedAPIResource } from "pokenode-ts";
 
 export class TKExpression<T, K> {
   constructor(
@@ -72,6 +72,16 @@ export class TObjectPokemon extends TObject<Pokemon> {
     return this.value.name;
   }
 }
+
+export class TObjectEvolutionTrigger extends TObject<EvolutionTrigger> {
+  constructor(trigger: EvolutionTrigger) {
+    super(trigger);
+  }
+
+  public toString(): string {
+    return this.value.name;
+  }
+};
 
 export class TObjectGeneration extends TObject<Generation> {
   constructor(generation: Generation) {
@@ -198,6 +208,16 @@ export class TFromOrAfterGeneration extends TPredicate<Generation, PokemonSpecie
   }
   public toString(gen: Generation): string {
     return `Is it from ${gen.name} or after?`;
+  }
+}
+
+export class TIsEvolutionTrigger extends TPredicate<EvolutionTrigger, Pokemon> {
+  evaluate(o1: TObject<EvolutionTrigger>, o2: TObject<Pokemon>): boolean {
+    return o1.value.pokemon_species.some((poke: NamedAPIResource) => poke.name == o2.value.name);
+  }
+
+  public toString(trigger: EvolutionTrigger): string {
+    return `Does it evolve by ${trigger.name}`;
   }
 }
 

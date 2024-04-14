@@ -197,15 +197,11 @@
       >
         <div class="flex py-3">
           <Multiselect
-            v-model="selectedOptions.evolutions.triggers"
+            v-model="selectedOptions.evolutions.trigger"
             :options="options.evolutions.triggers"
             :searchable="true"
             placeholder="Triggers"
-            @change="
-              () => {
-                console.log('changed');
-              }
-            "
+            @change="evolutionTriggerSelected($event as any as string)"
             valueProp="name"
             trackBy="name"
             label="name"
@@ -319,6 +315,7 @@ import {
   MainClient,
   Pokemon,
   PokemonSpecies,
+  EvolutionTrigger,
   Generation,
   Move,
   Type,
@@ -332,6 +329,8 @@ import {
   TObjectPokemon,
   TEqualPokemon,
   TObjectGeneration,
+  TObjectEvolutionTrigger,
+  TIsEvolutionTrigger,
   TFromGeneration,
   TFromOrBeforeGeneration,
   TFromOrAfterGeneration,
@@ -418,7 +417,7 @@ const selectedOptions = ref<{
   typesNumber: number;
   gen: { value: string; pred: TimeRelated };
   evolutions: {
-    triggers: string;
+    trigger: string;
   };
 }>({
   pokemon: "",
@@ -432,7 +431,7 @@ const selectedOptions = ref<{
   typesNumber: 0,
   gen: { value: "", pred: TimeRelated.Is },
   evolutions: {
-    triggers: "",
+    trigger: "",
   },
 });
 
@@ -617,6 +616,29 @@ const genSelected = async (params: {
   const exp: TKExpression<Generation, PokemonSpecies> = new TKExpression<
     Generation,
     PokemonSpecies
+  >(o1, predicate, o2);
+  currentExpression.value = exp;
+  return exp;
+};
+
+const evolutionTriggerSelected = async (
+  trigger: string
+): Promise<TKExpression<EvolutionTrigger, Pokemon>> => {
+  if (!trigger || !trigger.length) {
+    const exp: TKExpression<EvolutionTrigger, Pokemon> = getDefaultExpression();
+    currentExpression.value = exp;
+    return exp;
+  }
+  const selectedTrigger = await api.evolution.getEvolutionTriggerByName(trigger);
+  if (!selectedTrigger || !solutionPoke.value) {
+    throw new Error("Selected Evolution Trigger Invalid");
+  }
+  const o1: TObjectEvolutionTrigger = new TObjectEvolutionTrigger(selectedTrigger);
+  const o2: TObjectPokemon = new TObjectPokemon(solutionPoke.value);
+  const predicate: TIsEvolutionTrigger = new TIsEvolutionTrigger();
+  const exp: TKExpression<EvolutionTrigger, Pokemon> = new TKExpression<
+    EvolutionTrigger,
+    Pokemon
   >(o1, predicate, o2);
   currentExpression.value = exp;
   return exp;
