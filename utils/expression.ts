@@ -83,6 +83,16 @@ export class TObjectEvolutionChain extends TObject<EvolutionChain> {
   }
 };
 
+export class TObjectEvolutionChainNumber extends TObject<number> {
+  constructor(chain: number) {
+    super(chain);
+  }
+
+  public toString(): string {
+    return this.value.toString();
+  }
+}
+
 export class TObjectEvolutionStage extends TObject<number> {
   constructor(stage: number) {
     super(stage);
@@ -192,16 +202,6 @@ export abstract class TPredicate<T, K> {
   abstract toString(o1: T): string;
 }
 
-export class TPredicateDefault extends TPredicate<any, any> {
-  evaluate(o1: TObject<any>, o2: TObject<any>): boolean {
-    return false;
-  }
-
-  public toString(): string {
-    return `DEFAULT`;
-  }
-}
-
 export class TEqualPokemon extends TPredicate<Pokemon, Pokemon> {
   evaluate(o1: TObject<Pokemon>, o2: TObject<Pokemon>): boolean {
     return o1.value.name === o2.value.name;
@@ -239,6 +239,7 @@ export class TFromOrAfterGeneration extends TPredicate<Generation, PokemonSpecie
   }
 }
 
+//#region EVOLUTION
 function getStage(chain: ChainLink, pokemon: Pokemon): number {
   let stage = -1;
   if(chain.species.name == pokemon.name) {
@@ -250,6 +251,55 @@ function getStage(chain: ChainLink, pokemon: Pokemon): number {
   }) 
 
   return stage;
+}
+
+function countChainPokemon(chain: ChainLink): number {
+  let stage = 1;
+
+  chain.evolves_to.forEach((child: ChainLink) => {
+    stage += countChainPokemon(child); 
+  }) 
+
+  return stage;
+}
+
+export class TEvolutionChainNumberE extends TPredicate<number, EvolutionChain> {
+
+  evaluate(o1: TObject<number>, o2: TObject<EvolutionChain>): boolean {
+    const chainCount = countChainPokemon(o2.value.chain);
+    return o1.value == chainCount;
+  }
+
+  public toString(chain: number): string {
+    if (chain == 1) {
+      return `Is it the only pokemon in its evo-chain?`
+    } else {
+      return `Does its evo-chain have ${chain} pokemon?`
+    }
+  }
+}
+export class TEvolutionChainNumberLE extends TPredicate<number, EvolutionChain> {
+
+  evaluate(o1: TObject<number>, o2: TObject<EvolutionChain>): boolean {
+    const chainCount = countChainPokemon(o2.value.chain);
+    return chainCount <= o1.value;
+  }
+
+  public toString(chain: number): string {
+    return `Does its evo-chain have ${chain} pokemon or less?`;
+  }
+}
+
+export class TEvolutionChainNumberGE extends TPredicate<number, EvolutionChain> {
+
+  evaluate(o1: TObject<number>, o2: TObject<EvolutionChain>): boolean {
+    const chainCount = countChainPokemon(o2.value.chain);
+    return chainCount >= o1.value;
+  }
+
+  public toString(chain: number): string {
+    return `Does its evo-chain have ${chain} pokemon or more?`;
+  }
 }
 export class TIsEvolutionStage extends TPredicate<EvolutionChain, Pokemon> {
   constructor(...args: number[]) {
@@ -285,6 +335,8 @@ export class TIsEvolutionTrigger extends TPredicate<EvolutionTrigger, Pokemon> {
     return `Did it evolve by ${trigger.name}?`;
   }
 }
+
+//#endregion
 
 export class TLearnMove extends TPredicate<Move, Pokemon> {
   evaluate(o1: TObject<Move>, o2: TObject<Pokemon>): boolean {

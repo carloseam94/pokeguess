@@ -204,6 +204,27 @@
       >
         <div class="flex py-3">
           <Multiselect
+            v-model="selectedOptions.evolutions.chainNumber.pred"
+            :options="options.predicates.math"
+            placeholder="Predicates"
+            @change="evolutionChainSelected({ chain: selectedOptions.evolutions.chainNumber.value, pred: $event as any as MathSymbols})"
+            valueProp="name"
+            trackBy="name"
+            label="name"
+          />
+          <Multiselect
+            v-model="selectedOptions.evolutions.chainNumber.value"
+            :options="options.evolutions.chainNumbers"
+            :searchable="true"
+            placeholder="Evo-chain number"
+            @change="evolutionChainSelected({ chain: $event as any as number, pred: selectedOptions.evolutions.chainNumber.pred})"
+            valueProp="value"
+            trackBy="name"
+            label="name"
+          />
+        </div>
+        <div class="flex py-3">
+          <Multiselect
             v-model="selectedOptions.evolutions.stage"
             :options="options.evolutions.stages"
             :searchable="true"
@@ -349,7 +370,11 @@ import {
   TObjectPokemon,
   TEqualPokemon,
   TObjectGeneration,
+  TObjectEvolutionChainNumber,
   TObjectEvolutionChain,
+  TEvolutionChainNumberE,
+  TEvolutionChainNumberLE,
+  TEvolutionChainNumberGE,
   TIsEvolutionStage,
   TObjectEvolutionTrigger,
   TIsEvolutionTrigger,
@@ -412,7 +437,7 @@ const options = ref<{
   gens: Preview[];
   evolutions: {
     stages: { name: EvoStage; value: number }[];
-    chainNumber: number[];
+    chainNumbers: number[];
     triggers: Preview[];
   };
   predicates: {
@@ -432,7 +457,7 @@ const options = ref<{
       { name: EvoStage.First, value: 1 },
       { name: EvoStage.Second, value: 2 },
     ],
-    chainNumber: [1, 2, 3, 4, 9],
+    chainNumbers: [1, 2, 3, 4, 9],
     triggers: [],
   },
   predicates: {
@@ -454,7 +479,10 @@ const selectedOptions = ref<{
   evolutions: {
     stage: number;
     trigger: string;
-    chainNumber: number;
+    chainNumber: {
+      value: number;
+      pred: MathSymbols;
+    };
   };
 }>({
   pokemon: "",
@@ -470,7 +498,10 @@ const selectedOptions = ref<{
   evolutions: {
     stage: -1,
     trigger: "",
-    chainNumber: 1,
+    chainNumber: {
+      value: 0,
+      pred: MathSymbols.Equal,
+    },
   },
 });
 
@@ -495,6 +526,7 @@ const getRandomPokemon = async (optionsPoke: Preview[]): Promise<Pokemon> => {
     optionsPoke[getRandomInt(optionsPoke.length)].name
   );
   solutionPoke.value = pokemon;
+  console.log("POKEMON: ", solutionPoke.value);
   return pokemon;
 };
 
@@ -659,6 +691,50 @@ const genSelected = async (params: {
 };
 
 //#region EVOLUTION
+const evolutionChainSelected = async (params: { chain: number; pred: MathSymbols }) => {
+  if (params.chain == undefined || params.chain < 1) {
+    currentExpression.value = null;
+    return null;
+  }
+
+  if (!solutionPoke.value) {
+    throw new Error("Solution Poke Invalid");
+  }
+
+  const species = await api.pokemon.getPokemonSpeciesByName(solutionPoke.value?.name);
+  const splitUrl = species.evolution_chain.url.split("/");
+  const evoChain = await api.evolution.getEvolutionChainById(
+    parseInt(splitUrl[splitUrl.length - 2])
+  );
+
+  if (!evoChain) {
+    throw new Error("Cant get evo chain from poke");
+  }
+
+  const o1: TObjectEvolutionChainNumber = new TObjectEvolutionChainNumber(params.chain);
+  const o2: TObjectEvolutionChain = new TObjectEvolutionChain(evoChain);
+
+  let predicate = null;
+
+  switch (params.pred) {
+    case MathSymbols.Greater:
+      predicate = new TEvolutionChainNumberGE();
+      break;
+    case MathSymbols.Lesser:
+      predicate = new TEvolutionChainNumberLE();
+      break;
+    default:
+      predicate = new TEvolutionChainNumberE();
+  }
+
+  const exp: TKExpression<number, EvolutionChain> = new TKExpression<
+    number,
+    EvolutionChain
+  >(o1, predicate, o2);
+  currentExpression.value = exp;
+  return exp;
+};
+
 const evolutionStageSelected = async (
   stage: number
 ): Promise<TKExpression<EvolutionChain, Pokemon> | null> => {
@@ -884,7 +960,6 @@ onMounted(async () => {
   await getStatOptions();
   await getBallUrl();
   await getRandomPokemon(options.value.pokemon);
-  console.log(solutionPoke.value);
 });
 </script>
 <style>
