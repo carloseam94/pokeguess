@@ -1,5 +1,5 @@
 import { Pokemon, Generation, Move, Type, PokemonSpecies, Stat, PokemonStat, EvolutionTrigger, NamedAPIResource, EvolutionChain, ChainLink } from "pokenode-ts";
-
+import { SpeciesCategory } from "./types"
 export class TKExpression<T, K> {
   constructor(
     private o1: TObject<T>,
@@ -70,6 +70,16 @@ export class TObjectPokemon extends TObject<Pokemon> {
 
   public toString(): string {
     return this.value.name;
+  }
+}
+
+export class TObjectSpeciesCategory extends TObject<SpeciesCategory> {
+  constructor(category: SpeciesCategory) {
+    super(category);
+  }
+
+  public toString(): string {
+    return this.value;
   }
 }
 
@@ -209,6 +219,34 @@ export class TEqualPokemon extends TPredicate<Pokemon, Pokemon> {
 
   public toString(pokemon: Pokemon): string {
     return `Is it ${pokemon.name}?`;
+  }
+}
+
+export class TIsSpeciesCategory extends TPredicate<SpeciesCategory, PokemonSpecies> {
+  evaluate(o1: TObject<SpeciesCategory>, o2: TObject<PokemonSpecies>): boolean {
+    let result = false;
+    switch(o1.value) {
+      case SpeciesCategory.Baby:
+        result = o2.value.is_baby;
+        break;
+      case SpeciesCategory.Legendary:
+        result = o2.value.is_legendary;
+        break;
+      case SpeciesCategory.Mythical:
+        result = o2.value.is_mythical;
+        break;
+      default:
+        result =  !o2.value.is_baby && !o2.value.is_legendary && !o2.value.is_mythical;
+    }
+    return result;
+  }
+
+  public toString(category: SpeciesCategory): string {
+    if(category != SpeciesCategory.None) {
+      return `Is it a ${category}?`;
+    } else {
+      return `Does it have no special category?`;
+    }
   }
 }
 

@@ -76,6 +76,18 @@
         <li class="mr-2" role="presentation">
           <button
             class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
+            id="species-tab"
+            type="button"
+            role="tab"
+            aria-controls="species"
+            aria-selected="false"
+          >
+            Species
+          </button>
+        </li>
+        <li class="mr-2" role="presentation">
+          <button
+            class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
             id="gensgames-tab"
             type="button"
             role="tab"
@@ -161,6 +173,20 @@
             :searchable="true"
             placeholder="Pokemon"
             @change="pokemonSelected"
+            valueProp="name"
+            trackBy="name"
+            label="name"
+          />
+        </div>
+      </div>
+      <div class="hidden p-4" id="species" role="tabpanel" aria-labelledby="species-tab">
+        <div class="py-3">
+          <Multiselect
+            v-model="selectedOptions.species.category"
+            :options="options.species.categories"
+            :searchable="true"
+            placeholder="Category"
+            @change="speciesCategorySelected"
             valueProp="name"
             trackBy="name"
             label="name"
@@ -364,11 +390,20 @@ import {
   Stat,
 } from "pokenode-ts";
 import { getRandomInt } from "../utils/helpers";
-import { Preview, Guess } from "../utils/types";
+import {
+  Preview,
+  Guess,
+  MathSymbols,
+  TimeRelated,
+  EvoStage,
+  SpeciesCategory,
+} from "../utils/types";
 import {
   TKExpression,
   TObjectPokemon,
   TEqualPokemon,
+  TObjectSpeciesCategory,
+  TIsSpeciesCategory,
   TObjectGeneration,
   TObjectEvolutionChainNumber,
   TObjectEvolutionChain,
@@ -410,26 +445,11 @@ const solutionPoke = ref<Pokemon>();
 const isSolved = ref<boolean>(false);
 const guesses = reactive<Guess[]>([]);
 
-enum MathSymbols {
-  Equal = "=",
-  Greater = ">=",
-  Lesser = "<=",
-}
-
-enum TimeRelated {
-  Is = "Is from",
-  Before = "Is from or before",
-  After = "Is from or after",
-}
-
-enum EvoStage {
-  Unevolved = "Unevolved",
-  First = "First evolution",
-  Second = "Second evolution",
-}
-
 const options = ref<{
   pokemon: Preview[];
+  species: {
+    categories: SpeciesCategory[];
+  };
   moves: Preview[];
   stats: Preview[];
   types: Preview[];
@@ -446,6 +466,14 @@ const options = ref<{
   };
 }>({
   pokemon: [],
+  species: {
+    categories: [
+      SpeciesCategory.Baby,
+      SpeciesCategory.Legendary,
+      SpeciesCategory.Mythical,
+      SpeciesCategory.None,
+    ],
+  },
   moves: [],
   stats: [],
   types: [],
@@ -467,6 +495,9 @@ const options = ref<{
 });
 const selectedOptions = ref<{
   pokemon: string;
+  species: {
+    categories: string;
+  };
   move: string;
   stat: {
     name: string;
@@ -486,6 +517,9 @@ const selectedOptions = ref<{
   };
 }>({
   pokemon: "",
+  species: {
+    categories: "",
+  },
   move: "",
   stat: {
     name: "",
@@ -538,6 +572,11 @@ const initializeTabs = async (): Promise<void> => {
       id: "pokemon",
       triggerEl: document.querySelector("#pokemon-tab")!,
       targetEl: document.querySelector("#pokemon")!,
+    },
+    {
+      id: "species",
+      triggerEl: document.querySelector("#species-tab")!,
+      targetEl: document.querySelector("#species")!,
     },
     {
       id: "gensgames",
@@ -648,6 +687,33 @@ const pokemonSelected = async (
     o2,
     true
   );
+  currentExpression.value = exp;
+  return exp;
+};
+
+const speciesCategorySelected = async (category: SpeciesCategory) => {
+  if (!category || !category.length) {
+    currentExpression.value = null;
+    return null;
+  }
+
+  console.log(category);
+
+  if (!solutionPoke.value) {
+    throw new Error("Selected Pokemon Invalid");
+  }
+
+  const species: PokemonSpecies = await api.pokemon.getPokemonSpeciesByName(
+    solutionPoke.value.name
+  );
+
+  const o1: TObjectSpeciesCategory = new TObjectSpeciesCategory(category);
+  const o2: TObjectSpecies = new TObjectSpecies(species);
+  const predicate: TIsSpeciesCategory = new TIsSpeciesCategory();
+  const exp: TKExpression<SpeciesCategory, PokemonSpecies> = new TKExpression<
+    SpeciesCategory,
+    PokemonSpecies
+  >(o1, predicate, o2);
   currentExpression.value = exp;
   return exp;
 };
