@@ -282,7 +282,7 @@ export class TIsEvolutionTrigger extends TPredicate<EvolutionTrigger, Pokemon> {
   }
 
   public toString(trigger: EvolutionTrigger): string {
-    return `Did it evolve by ${trigger.name}`;
+    return `Did it evolve by ${trigger.name}?`;
   }
 }
 
@@ -418,13 +418,3 @@ export class TStatGE extends TPredicate<Stat | {name: string}, Pokemon> {
 
 //#endregion
 
-//#region FUNCTIONS
-export function getDefaultExpression<T, K>(): TKExpression<T, K> {
-  const exp: TKExpression<T, K> = new TKExpression<T, K>(
-    new TObjectDefault(),
-    new TPredicateDefault(),
-    new TObjectDefault()
-  );
-  return exp;
-}
-//#endregion

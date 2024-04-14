@@ -2,8 +2,8 @@
   <div class="text-center">
     <h1 class="py-3 text-3xl font-bold underline">Pokeguess</h1>
   </div>
-  <div class="flex justify-center">
-    <div class="col-3">
+  <div class="md:flex justify-center items-center">
+    <div class="md:w-[300px] md:mx-0 mx-3">
       <span class="flex justify-center mb-2 font-semibold"
         >Guesses: {{ guesses.length }}</span
       >
@@ -19,7 +19,7 @@
         </li>
       </ul>
     </div>
-    <div class="col-3 text-center">
+    <div class="text-center md:w-[300px]">
       <img
         :src="isSolved ? solutionPoke?.sprites.front_default?.toString() : ballUrl"
         class="inline"
@@ -28,26 +28,33 @@
         height="150"
       />
     </div>
-    <div class="col-3"></div>
+    <div class="md:w-[300px]"></div>
   </div>
   <div class="py-3 text-center">
-    <button
-      type="button"
-      @click="guess"
-      :disabled="!currentExpression"
-      class="text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 shadow-lg shadow-blue-500/50 dark:shadow-lg dark:shadow-blue-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-2 mb-2"
-    >
-      Guess
-    </button>
-    <button
-      type="button"
-      @click="reset"
-      class="text-white bg-gradient-to-r from-green-400 via-green-500 to-green-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-800 shadow-lg shadow-green-500/50 dark:shadow-lg dark:shadow-green-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-2 mb-2"
-    >
-      Reset
-    </button>
+    <span class="font-light mb-2 text-xl shadow-lg p-2 rounded">
+      {{ currentExpression ?? (isSolved ? "You won!" : "Make your guess!") }}
+    </span>
+    <div class="mt-4">
+      <button
+        v-if="!isSolved"
+        type="button"
+        @click="guess"
+        :disabled="!currentExpression"
+        class="text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 shadow-lg shadow-blue-500/50 dark:shadow-lg dark:shadow-blue-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+      >
+        Guess
+      </button>
+      <button
+        v-else
+        type="button"
+        @click="reset"
+        class="text-white bg-gradient-to-r from-green-400 via-green-500 to-green-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-800 shadow-lg shadow-green-500/50 dark:shadow-lg dark:shadow-green-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+      >
+        Reset
+      </button>
+    </div>
   </div>
-  <div class="py-3 border border-gray-200 bg-gray-50 rounded-lg shadow-lg">
+  <div class="py-3 md:mx-0 mx-3 border border-gray-200 bg-gray-50 rounded-lg shadow-lg">
     <div class="mb-4 border-b">
       <ul
         class="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500"
@@ -360,7 +367,6 @@ import {
   TStatE,
   TStatGE,
   TStatLE,
-  getDefaultExpression,
 } from "../utils/expression";
 
 import { Tabs } from "flowbite";
@@ -592,11 +598,10 @@ const getStatOptions = async (): Promise<Preview[]> => {
 
 const pokemonSelected = async (
   pokemonName: string
-): Promise<TKExpression<Pokemon, Pokemon>> => {
+): Promise<TKExpression<Pokemon, Pokemon> | null> => {
   if (!pokemonName || !pokemonName.length) {
-    const exp: TKExpression<Pokemon, Pokemon> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
   const selectedPokemon = await api.pokemon.getPokemonByName(pokemonName);
   if (!selectedPokemon || !solutionPoke.value) {
@@ -618,11 +623,10 @@ const pokemonSelected = async (
 const genSelected = async (params: {
   genName: string;
   pred: TimeRelated;
-}): Promise<TKExpression<Generation, PokemonSpecies>> => {
+}): Promise<TKExpression<Generation, PokemonSpecies> | null> => {
   if (!params.genName?.length || !params.pred?.length) {
-    const exp: TKExpression<Generation, PokemonSpecies> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
   const selectedGen = await api.game.getGenerationByName(params.genName);
   if (!selectedGen || !solutionPoke.value) {
@@ -657,13 +661,10 @@ const genSelected = async (params: {
 //#region EVOLUTION
 const evolutionStageSelected = async (
   stage: number
-): Promise<TKExpression<EvolutionChain, Pokemon>> => {
-  console.log(stage);
-
+): Promise<TKExpression<EvolutionChain, Pokemon> | null> => {
   if (stage == undefined || stage < 0) {
-    const exp: TKExpression<EvolutionChain, Pokemon> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
 
   if (!solutionPoke.value) {
@@ -693,11 +694,10 @@ const evolutionStageSelected = async (
 
 const evolutionTriggerSelected = async (
   trigger: string
-): Promise<TKExpression<EvolutionTrigger, Pokemon>> => {
+): Promise<TKExpression<EvolutionTrigger, Pokemon> | null> => {
   if (!trigger || !trigger.length) {
-    const exp: TKExpression<EvolutionTrigger, Pokemon> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
   const selectedTrigger = await api.evolution.getEvolutionTriggerByName(trigger);
   if (!selectedTrigger || !solutionPoke.value) {
@@ -716,11 +716,12 @@ const evolutionTriggerSelected = async (
 };
 //#endregion
 
-const moveSelected = async (moveName: string): Promise<TKExpression<Move, Pokemon>> => {
+const moveSelected = async (
+  moveName: string
+): Promise<TKExpression<Move, Pokemon> | null> => {
   if (!moveName || !moveName.length) {
-    const exp: TKExpression<Move, Pokemon> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
   const selectedMove = await api.move.getMoveByName(moveName);
   if (!selectedMove || !solutionPoke.value) {
@@ -740,11 +741,10 @@ const moveSelected = async (moveName: string): Promise<TKExpression<Move, Pokemo
 
 const typesSelected = async (
   typesName: string[]
-): Promise<TKExpression<Type[], Pokemon>> => {
+): Promise<TKExpression<Type[], Pokemon> | null> => {
   if (!typesName || !typesName.length || typesName.length > 2) {
-    const exp: TKExpression<Type[], Pokemon> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
   let selectedTypes: Type[] = [];
   selectedTypes.push(await api.pokemon.getTypeByName(typesName[0]));
@@ -768,11 +768,10 @@ const typesSelected = async (
 
 const typesNumberSelected = async (
   typesNumber: number
-): Promise<TKExpression<number, Pokemon>> => {
+): Promise<TKExpression<number, Pokemon> | null> => {
   if (typesNumber < 1 || typesNumber > 2) {
-    const exp: TKExpression<number, Pokemon> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
 
   if (!solutionPoke.value) {
@@ -794,11 +793,10 @@ const statSelected = async (params: {
   statName: string;
   pred: MathSymbols;
   value: number;
-}): Promise<TKExpression<Stat | { name: string }, Pokemon>> => {
+}): Promise<TKExpression<Stat | { name: string }, Pokemon> | null> => {
   if (!params.statName?.length || !params.pred?.length || params.value < 0) {
-    const exp: TKExpression<Stat, Pokemon> = getDefaultExpression();
-    currentExpression.value = exp;
-    return exp;
+    currentExpression.value = null;
+    return null;
   }
 
   if (!solutionPoke.value) {
@@ -848,8 +846,7 @@ const getBallUrl = async (name: string = "poke"): Promise<string> => {
 
 const reset = async (): Promise<void> => {
   await getRandomPokemon(options.value.pokemon);
-  const exp: TKExpression<null, null> = getDefaultExpression();
-  currentExpression.value = exp;
+  currentExpression.value = null;
   guesses.splice(0);
   isSolved.value = false;
 };
@@ -858,6 +855,7 @@ const guess = (): Boolean => {
   if (!currentExpression.value) {
     throw new Error("Expression is not yet ready");
   }
+
   const result = currentExpression.value.evaluate();
   guesses.unshift({
     question: currentExpression.value.toString(),
@@ -890,11 +888,6 @@ onMounted(async () => {
 });
 </script>
 <style>
-.col-3 {
-  flex-grow: 1;
-  width: 33%;
-}
-
 .multiselect {
   max-width: 300px;
 }
