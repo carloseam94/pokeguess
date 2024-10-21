@@ -20,13 +20,7 @@
       </ul>
     </div>
     <div class="text-center md:w-[300px]">
-      <img
-        :src="isSolved ? solutionPoke?.sprites.front_default?.toString() : ballUrl"
-        class="inline"
-        alt="ball"
-        width="150"
-        height="150"
-      />
+      <img :src="solutionPokeSprite" class="inline" alt="ball" width="150" height="150" />
     </div>
     <div class="md:w-[300px]"></div>
   </div>
@@ -436,12 +430,14 @@ const api = new MainClient();
 
 const POKE_LIMIT = 1010;
 const MOVE_LIMIT = 918;
+const SHINY_ODDS = 0.1;
 
 const ballNames: string[] = ["poke", "great", "ultra", "timer", "master"];
 const ballChangeStep: number = 5;
 
 const ballUrl = ref<string>();
 const solutionPoke = ref<Pokemon>();
+const isShiny = ref<boolean>();
 const isSolved = ref<boolean>(false);
 const guesses = reactive<Guess[]>([]);
 
@@ -543,6 +539,16 @@ const maxStatValue = computed(() => {
   return selectedOptions.value.stat.name == "total" ? 1530 : 255;
 });
 
+const solutionPokeSprite = computed(() => {
+  if (isSolved.value) {
+    if (isShiny.value) {
+      return solutionPoke.value?.sprites.front_shiny?.toString();
+    }
+    return solutionPoke.value?.sprites.front_default?.toString();
+  }
+  return ballUrl.value;
+});
+
 const currentExpression = ref<TKExpression<any, any> | null>();
 
 watch(guesses, async (new_value) => {
@@ -560,6 +566,7 @@ const getRandomPokemon = async (optionsPoke: Preview[]): Promise<Pokemon> => {
     optionsPoke[getRandomInt(optionsPoke.length)].name
   );
   solutionPoke.value = pokemon;
+  isShiny.value = Math.random() >= SHINY_ODDS;
   console.log("POKEMON: ", solutionPoke.value);
   return pokemon;
 };
